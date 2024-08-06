@@ -1,7 +1,6 @@
 require('dotenv').config();
 const Stripe = require("stripe");
 const stripe = new Stripe(process.env.STRIPE);
-
 const emailHelper = require('./helpers/email.js');
 
 
