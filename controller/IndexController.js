@@ -1,28 +1,9 @@
-const { sequelize, Support } = require('../models/sequelize');
+require('dotenv').config();
 const Stripe = require("stripe");
-const stripe = new Stripe("sk_test_51KsA9rBp6uwr6por8pB7dv2xDCj4KAWdSCf5FTP3QkXnDpRzQJg9Q6G5TxWJ91Xbf8dwd9b6hbvmScYElAgGRUES00zPLNkIbD");
-var nodemailer = require('nodemailer');
-var hbs = require('nodemailer-express-handlebars');
-const path = require('path');
+const stripe = new Stripe(process.env.STRIPE);
 
+const emailHelper = require('./helpers/email.js');
 
-var transporter = nodemailer.createTransport({
-    service: 'SendinBlue',
-    auth: {
-        user: "luisrojas@radi.pet",
-        pass: "O5pPUXCtd84ZznWI" 
-    }
-});
-
-const handlebarOptions = {
-    viewEngine: {
-        extName:".handlebars",
-        partialsDir: path.resolve('./views'),
-        defaultLayout:false
-    },
-    viewPath:path.resolve('./views'),
-    extName:".handlebars"
-    }
 
 module.exports.hellow = async (_,res) => {
 
@@ -30,7 +11,7 @@ module.exports.hellow = async (_,res) => {
         id: 'dasdas-122312',
         date: new Date(),
         payment: {
-            method: `mastecar 4242`,
+            method: `mastecard 4242`,
             price: 10000, 
             currency: 'MXN'
         }
@@ -38,7 +19,7 @@ module.exports.hellow = async (_,res) => {
 
     const email = "l.rojas@sonetasot.com.mx";
     const template = "InvoicePaymentFailed";
-    await sendEmail(email,template,context);
+    await emailHelper.sendEmail(email,template,context);
 
     return res.json('Correo Enviado: '+template);
 }
@@ -49,13 +30,13 @@ module.exports.test = async(req,res) => {
     context = {
 
     };
-    sendEmail(email,"PaymentSucceeded",context);
+    await emailHelper.sendEmail(email,"PaymentSucceeded",context);
 
     return res.json('success');
 }
 
 module.exports.index = async (req, res) => {
-  const endpointSecret = 'whsec_q07ifLzU0FUVLjyvNTJgT2pfE8eopzMe'; // Reemplaza con tu secreto del webhook
+  const endpointSecret =  process.env.ENDPOINT_SECRET; // Reemplaza con tu secreto del webhook
   const sig = req.headers['stripe-signature'];
   let event;
 
@@ -95,7 +76,7 @@ module.exports.index = async (req, res) => {
 
     const paymentMethodId = paymentIntent.payment_method; 
     const paymentMethod = await stripe.paymentMethods.retrieve(paymentMethodId);
-    const email = getEmail(paymentIntent);
+    const email = await emailHelper.getEmail(paymentIntent);
 
     let paymentMethodType = '';
     let last4 = '';
@@ -113,7 +94,7 @@ module.exports.index = async (req, res) => {
             currency: paymentIntent.currency.toUpperCase()
         }
     };  
-    sendEmail(email,'PaymentSucceeded',context)
+    await emailHelper.sendEmail(email,'PaymentSucceeded',context)
 }
 
 function handlePaymentFailed(paymentIntent){
@@ -157,109 +138,4 @@ async function cancelSubscription(subscriptionId) {
     } catch (err) {
         console.error(`Failed to cancel subscription ${subscriptionId}:`, err);
     }
-}
-
-
-
-
-
-// email functions sendEmail
-
-async function sendEmail(email,type,data){
-    const mailOptions = {
-        from: 'Radi Payments<payments@radi.pet>',
-        to: email,
-        subject: getSubject(type),
-        template: getTemplate(type),
-        context: getContext(type,data)
-    };
-    try{    
-        transporter.sendMail(mailOptions, (error, info) => {
-            if (error) {
-                console.error(error);
-            } else {
-                console.log('Email enviado:', info.response);
-            }
-        });
-    }catch(err){
-        console.error(err);
-    }
-    return true;
-
-}
-
-function getSubject(type){
-    switch (type) {
-        case "PaymentSucceeded":
-            return "Compra en Radi";
-        case "SubscriptionCreated":
-            return "Suscripción en Radi";
-        case "SubscriptionDeleted":
-            return "Desuscripción en Radi";
-        case "InvoicePaymentFailed":
-            return "Pago fallido en suscripción en Radi";
-        case "InvoicePaymentSucceeded":
-            return "Tu suscripción en Radi";
-        default:
-            console.error('Tipo de evento no reconocido:', type);
-            return '';
-    }
-}
-
-function getTemplate(type){
-    switch (type) {
-        case "PaymentSucceeded":
-            return 'handlebars_emails/PaymentSucceeded';
-        case "SubscriptionCreated":
-            return 'handlebars_emails/SubscriptionCreated';
-        case "SubscriptionDeleted":
-            return 'handlebars_emails/SubscriptionDeleted';
-        case "InvoicePaymentFailed":
-            return 'handlebars_emails/InvoicePaymentFailed';
-        case "InvoicePaymentSucceeded":
-            return 'handlebars_emails/InvoicePaymentSucceeded';
-        default:
-            console.error('Tipo de evento no reconocido:', type);
-            return '';
-    }
-}
-
-function getContext(type,data){
-    switch (type) {
-        case "PaymentSucceeded":
-            return data;
-        case "SubscriptionCreated":
-            return {
-                id: data.id,
-                title: 'Gracias por unirte a la suscripción más perrona',
-                message: 'Este es el resumen de tu suscripción'
-            };
-        case "SubscriptionDeleted":
-            return {
-                id: data.id,
-                title: 'Lamentamos tu desuscripción',
-                message: 'Esperamos pronto te vuelvas a unir!'
-            };
-        case "InvoicePaymentFailed":
-            return {
-                id: data.id,
-                title: 'Queremos informarte que el pago de tu suscripción ha fallado',
-                message: 'Tu suscripción no ha recibido pago'
-            };
-        case "InvoicePaymentSucceeded":
-            return {
-                id: data.id,
-                title: 'Nuevo pago de la suscripción',
-                message: 'Tu suscripción se ha renovado'
-            };
-        default:
-            console.error('Tipo de evento no reconocido:', type);
-            return {};
-    }
-}
-
-async function getEmail(paymentIntent){
-    const customerId = paymentIntent.customer;
-    const customer = await stripe.customers.retrieve(customerId);
-    return customer.email;
 }
