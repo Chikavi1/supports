@@ -1,5 +1,3 @@
-
-// emailHelper.js
 const Stripe = require("stripe");
 require('dotenv').config();
 const stripe = new Stripe(process.env.STRIPE);

@@ -2,12 +2,12 @@ const Stripe = require("stripe");
 require('dotenv').config();
 const stripe = new Stripe(process.env.STRIPE);
 const emailHelper = require('../helpers/email');
-
+const notificationsHelper = require('../helpers/notifications');
 
 module.exports.hellow = async (_,res) => {
 
     const context = {
-        id: 'dasdas-122312',
+        id: '122312',
         date: new Date(),
         payment: {
             method: `mastecard 4242`,
@@ -22,16 +22,14 @@ module.exports.hellow = async (_,res) => {
     //case "SubscriptionDeleted":
    //case "InvoicePaymentFailed":
    // case "InvoicePaymentSucceeded":
-
     const template = "InvoicePaymentFailed";
-    await emailHelper.sendEmail(email,template,context);
+    sendNotification()
+    // await emailHelper.sendEmail(email,template,context);
 
     return res.json('Correo Enviado: '+template);
 }
 
-module.exports.test = async(req,res) => {
-
-   
+module.exports.test = async(req,res) => {  
     return res.json('success');
 }
 
@@ -140,4 +138,32 @@ async function cancelSubscription(subscriptionId) {
     } catch (err) {
         console.error(`Failed to cancel subscription ${subscriptionId}:`, err);
     }
+}
+
+
+function sendNotification(){
+    const externalId = '214904';
+    const message = 'Hola Luis, gracias por comprar con nosotros!';
+    const title = 'Compra exitosa!';
+    notificationsHelper.sendNotification(externalId, title, message);
+}
+
+
+function handlerNotifyUser(response) {
+    console.log(response);
+    if(response.customer){
+        emailHelper.sendEmail(response.customer.email, 'PaymentSucceeded', response);
+    }
+    if(response.metadata){
+        handlerMetadata(response);
+    }
+}
+
+function handlerMetadata(event) {
+    // aqui puedes hacer otras cosas
+    if(event.notification.externalId){
+        sendNotification(event.notification.externalId, event.notification.title, event.notification.message);
+    }
+ 
+
 }
