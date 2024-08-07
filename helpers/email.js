@@ -1,5 +1,11 @@
+
 // emailHelper.js
-const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
+const Stripe = require("stripe");
+require('dotenv').config();
+const stripe = new Stripe(process.env.STRIPE);
+
+var hbs = require('nodemailer-express-handlebars');
+
 const nodemailer = require('nodemailer');
 const path = require('path');
 
@@ -25,8 +31,11 @@ const handlebarOptions = {
 
 
 async function getEmail(paymentIntent) {
-    const customerId = paymentIntent.customer;
+    const customerId = paymentIntent.customer; 
+    console.log('customerId',customerId)
+
     const customer = await stripe.customers.retrieve(customerId);
+    console.log('customer',customer)
     return customer.email;
 }
 
@@ -95,6 +104,9 @@ function getSubject(type) {
 }
 
 async function sendEmail(email, type, data) {
+
+    transporter.use('compile', hbs(handlebarOptions));
+
     const mailOptions = {
         from: 'Radi Payments <payments@radi.pet>',
         to: email,
@@ -103,7 +115,7 @@ async function sendEmail(email, type, data) {
         context: getContext(type, data)
     };
     try {
-        const info = await transporter.sendMailAsync(mailOptions);
+        const info = await transporter.sendMail(mailOptions);
         if (!info.rejected.length) {
             console.log('Email enviado:', info.response);
         }

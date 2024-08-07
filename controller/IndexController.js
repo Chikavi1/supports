@@ -1,7 +1,7 @@
-require('dotenv').config();
 const Stripe = require("stripe");
+require('dotenv').config();
 const stripe = new Stripe(process.env.STRIPE);
-const emailHelper = require('./helpers/email.js');
+const emailHelper = require('../helpers/email');
 
 
 module.exports.hellow = async (_,res) => {
@@ -17,6 +17,12 @@ module.exports.hellow = async (_,res) => {
     };
 
     const email = "l.rojas@sonetasot.com.mx";
+   // case "PaymentSucceeded":
+   // case "SubscriptionCreated":
+    //case "SubscriptionDeleted":
+   //case "InvoicePaymentFailed":
+   // case "InvoicePaymentSucceeded":
+
     const template = "InvoicePaymentFailed";
     await emailHelper.sendEmail(email,template,context);
 
@@ -25,12 +31,7 @@ module.exports.hellow = async (_,res) => {
 
 module.exports.test = async(req,res) => {
 
-    email = "chikavi10@gmail.com";
-    context = {
-
-    };
-    await emailHelper.sendEmail(email,"PaymentSucceeded",context);
-
+   
     return res.json('success');
 }
 
@@ -45,6 +46,8 @@ module.exports.index = async (req, res) => {
       console.error(`Webhook signature verification failed: ${err.message}`);
       return res.status(400).send(`Webhook Error: ${err.message}`);
   }
+
+  console.log("Received event:", event)
 
   switch (event.type) {
       case 'payment_intent.succeeded':
